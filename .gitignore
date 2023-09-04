@@ -1,0 +1,4 @@
+*.env
+*.txt
+/bureau_reports_json
+*.json
