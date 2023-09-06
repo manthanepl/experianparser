@@ -1,13 +1,7 @@
-import json 
-import psycopg2 
 import os
-from dotenv import load_dotenv
-import pandas as pd
 from argparse import ArgumentParser
-from utils.getPan import get_pan
-from utils.getBureauReport import getBureauReport
-
-
+from components.getPan import get_pan
+from components.getBureauReport import getBureauReport
 
 
 if __name__ == "__main__":
@@ -48,9 +42,6 @@ if __name__ == "__main__":
     # Convert the input list to a comma-separated string for the SQL query
     input_values = ', '.join(["%s"] * len(app_id_list))
     
-
-    
-
     # print(app_id_list)
 
     pan_records = get_pan(input_values=args.app_number)
@@ -65,10 +56,6 @@ if __name__ == "__main__":
     # Create the folder if it doesn't exist already
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
-
-
-
-    # print(pan_records)
 
 
     report = getBureauReport(pan_records , args.bureau_source_name , args.limit ,folder_path)

@@ -133,6 +133,17 @@ credit_facility_type_dict = {
     "12" : "Restructured due to COVID-19"
 }
 
+suit_filed_dict = {
+    "00" : "No Suit Filed",
+    "01" : "Suit filed",
+    "02" : "Wilful default",
+    "03" : "Suit filed (Wilful default)"
+}
+
+written_off_dict = {
+    "Written-off","Written Off and Account Sold","Account Purchased and Written Off"
+}
+
 secured_loans = {
     "Auto Loan (Personal)","Housing Loan","Property Loan","Loan Against Shares/Securities","Gold Loan","Gold Loan","Two-wheeler Loan","Non-Funded Credit Facility", "Loan Against Bank Deposits", "Commercial Vehicle Loan", "Secured Credit Card", "Used Car Loan", "Construction Equipment Loan","Tractor Loan","Microfinance – Business Loan","Microfinance – Personal Loan", "Microfinance – Housing Loan", "Microfinance – Others", "Pradhan Mantri Awas Yojana - Credit Link Subsidy Scheme MAY CLSS", "P2P Auto Loan", "Business Loan – Secured", "Business Loan – General", "Business Loan – Priority Sector – Small Business","Business Loan – Priority Sector – Agriculture", "Business Loan – Priority Sector – Others", "Business Non-Funded Credit Facility – General", "Business Non-Funded Credit Facility – Priority Sector – Small Business", "Business Non-Funded Credit Facility – Priority Sector – Agriculture", "Business Non-Funded Credit Facility – Priority Sector – Others", "Business Loan Against Bank Deposits"
 }
@@ -182,6 +193,8 @@ def dateparser_dmy(date_string):
     date_string = date_object.strftime('%Y-%m-%d')
     return date_string
 
+
+
 def transunion_parser(bureau_data, dest_db_params):
 
     conn = psycopg2.connect(**dest_db_params)
@@ -193,7 +206,7 @@ def transunion_parser(bureau_data, dest_db_params):
         bureau_source = added_data['bureau_source']
         row_id = added_data['row_id']
 
-        
+    print(f"===== Starting for Application ID -> {application_id} =====")
 
     if 'consumerCreditData' in bureau_data:
         # General Account Data
@@ -252,8 +265,8 @@ def transunion_parser(bureau_data, dest_db_params):
 
 
         query = """INSERT INTO veritas.bureau_person_details (
-            name, date_of_birth, age, gender, bureau_score, score_date, pan, voter_id, drivers_id, uid, passport_id, ration_id, application_id, enquiry_6months, enq_calculation_datetime, any_unsecured_loan_before)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;"""
+            name, date_of_birth, age, gender, bureau_score, score_date, pan, voter_id, drivers_id, uid, passport_id, ration_id, application_id, enquiry_6months, enq_calculation_datetime, any_unsecured_loan_before, parsed_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;"""
         
         account_holder_data = (
             name,
@@ -271,7 +284,8 @@ def transunion_parser(bureau_data, dest_db_params):
             application_id,
             None,
             None,
-            None
+            None,
+            today
         )
         
         cursor.execute(query, account_holder_data)
@@ -290,6 +304,9 @@ def transunion_parser(bureau_data, dest_db_params):
         accounts = bureau_data.get('consumerCreditData',{})[0].get('accounts',{})
         constant_foreign_key = inserted_id
         any_unsecured_loan = False
+        write_off_in_24months = False
+        write_off_amount_principal = 0
+        write_off_amount_total = 0
         dates_within_six_months_counter = 0
         # Loop through the JSON data and insert into the database
         for data in accounts:
@@ -334,13 +351,20 @@ def transunion_parser(bureau_data, dest_db_params):
                 else:
                     data['collateralType'] = "N/A"
 
+            if "suitFiled" in data:
+                suit_filed_type = data['suitFiled']
+                if suit_filed_type in suit_filed_dict:
+                    data['suitFiled'] = suit_filed_dict[suit_filed_type]
+                else:
+                    data['suitFiled'] = "N/A"
+
+
             if "creditFacilityStatus" in data:
                 credit_facility_status = data['creditFacilityStatus']
                 if credit_facility_status in credit_facility_type_dict:
                     data['creditFacilityStatus'] = credit_facility_type_dict[credit_facility_status]
                 else:
                     data['creditFacilityStatus'] = "N/A"
-
 
             if "paymentHistory" in data:
                 data['paymentHistory'] = None
@@ -376,7 +400,37 @@ def transunion_parser(bureau_data, dest_db_params):
             for field in date_fields:
                 if field in data:
                     data[field] = datetime.strptime(data[field], '%d%m%Y').date()
-            
+
+            # Changing the startDate and endDate as they are reversed in JSON Data
+            data['paymentStartDate'], data['paymentEndDate'] = data['paymentEndDate'], data['paymentStartDate']
+
+            diff_years = today.year - data['dateOpened'].year
+            diff_months = today.month - data['dateOpened'].month
+
+            # Adjust the difference if months are negative
+            if diff_months < 0:
+                diff_years -= 1
+                diff_months += 12
+
+            data['loan_vintage_in_months'] = diff_years*12 + diff_months
+            data['vintage_calculation_date'] = today.date()
+
+            two_years_ago = today.replace(year=today.year - 2).date()
+            if "paymentEndDate" in data and "creditFacilityStatus" in data:
+                if data['creditFacilityStatus'] in written_off_dict:
+                    data['written_off'] = True
+                    if "lastPaymentDate" in data:
+                        data['written_off_date'] = data['lastPaymentDate']
+                    else:
+                        data['written_off_date'] = data['paymentEndDate']
+                        if data['written_off_date'] >= two_years_ago:
+                            write_off_in_24months = True
+                            write_off_amount_principal = data.get('woAmountPrincipal',0)
+                            write_off_amount_total = data.get('woAmountTotal',0)
+                else:
+                    data['written_off'] = False
+            else:
+                data['written_off'] = False
             # Build the SQL query dynamically
             columns = '"'+'", "'.join(data.keys()) + '", "account_holder_id"'   # Double Quotes on every Column Names
             placeholders = ", ".join(["%s"] * (len(data) + 1))
@@ -392,9 +446,23 @@ def transunion_parser(bureau_data, dest_db_params):
         # Enquiries Account Data
         enquiries = bureau_data.get('consumerCreditData',{})[0].get('enquiries',{})
         constant_foreign_key = inserted_id
+        dates_within_six_months_counter_unsecured = 0
 
         # Loop through the JSON data and insert into the database
         for data in enquiries:
+
+            if "enquiryPurpose" in data:
+                account_type = data['enquiryPurpose']
+                if account_type in account_type_dict:
+                    data['enquiryPurpose'] = account_type_dict[account_type]
+                else:
+                    data['enquiryPurpose'] = "N/A"
+                
+                if data['enquiryPurpose'] in secured_loans:
+                    data['secured'] = True
+                else:
+                    data['secured'] = False
+
             # Convert date strings to date format
             date_fields = ["enquiryDate"]
             for field in date_fields:
@@ -405,6 +473,9 @@ def transunion_parser(bureau_data, dest_db_params):
                     six_months_ago = datetime.now().date() - timedelta(days=180)
                     if date_obj >= six_months_ago:
                         dates_within_six_months_counter += 1
+                    if data['secured'] == "False":
+                        dates_within_six_months_counter_unsecured += 1
+
                     
             
             # Build the SQL query dynamically
@@ -418,14 +489,18 @@ def transunion_parser(bureau_data, dest_db_params):
             conn.commit()
         
         print("===== Enquiry Details inserted Successfully =====")
+        
 
 
         query = f"""
-                UPDATE veritas.bureau_person_details SET enquiry_6months = {dates_within_six_months_counter}, enq_calculation_datetime = '{today}', any_unsecured_loan_before = {any_unsecured_loan} WHERE id = {constant_foreign_key}
+                UPDATE veritas.bureau_person_details SET enquiry_6months = {dates_within_six_months_counter}, enquiry_6months_unsecured = {dates_within_six_months_counter_unsecured}, enq_calculation_datetime = '{today}', any_unsecured_loan_before = {any_unsecured_loan}, any_written_off_in_last_24months = {write_off_in_24months}, written_off_principal_amount = {write_off_amount_principal}, written_off_total_amount = {write_off_amount_total} WHERE id = {constant_foreign_key}
                 """
         cursor.execute(query)
         conn.commit()
         print("===== Account Holder Details Updated =====")
+
+        print("===== Application Proccessed Successfully =====")
+        print("")
 
     else:
         raise Exception("No 'ConsumerCreditData' Found in the Data")
@@ -516,6 +591,8 @@ if not os.path.exists(folder_path):
 conn1 = psycopg2.connect(host=db_host, port=db_port, dbname=db_name, user=db_user, password=db_password)
 cursor1 = conn1.cursor()
 
+application_counter = 0
+
 for data in data_list:
     pan_number = data['pan']
     app_id = data['app_id']
@@ -543,8 +620,9 @@ for data in data_list:
         # with open(file_path, 'w') as f:
         #     json.dump(response_json, f, indent=4)
         # print(f"JSON response {row_number} saved to {file_path}")
+        application_counter += 1
 
-print("All data processed")
+print(f"{application_counter} Applications Proccessed Successfully")
 
 # Close the database connection
 cursor1.close()
