@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from argparse import ArgumentParser
 from datetime import datetime, timedelta
 
+from components.experian_parser import experian_parser
+
 # Determine the environment (dev or prod)
 environment = os.getenv("ENVIRONMENT", "dev")  # Default to dev if ENVIRONMENT is not set
 env_file = ".env.dev" if environment == "dev" else ".env.prod"
@@ -610,9 +612,12 @@ for data in data_list:
         response_json = json.loads(row[0])
         row_id = int(row[1])
         response_json['added_data'] = {"application_id": app_id, "bureau_source": args.bureau_source_name, "row_id": row_id}
-        # For parsing and uploading data to DB
-        transunion_parser(response_json, dest_config)
-
+        # For parsing and uploading data to DB\
+        if args.bureau_source_name == 'transunion':
+            transunion_parser(response_json, dest_config)
+        elif args.bureau_source_name == 'experian':
+            #TODO: experian parser
+             experian_parser(response_json,dest_config)
         # For making files of JSON Response
 
         # output_filename = f"{app_id}-{pan_number}-{args.bureau_source_name}-{row_number}.json"

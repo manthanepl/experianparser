@@ -1,8 +1,10 @@
 import psycopg2 
 import os
 from dotenv import load_dotenv
+
 # Load environment variables from .env file
 load_dotenv()
+
 
 def get_pan(input_values):
     SOURCE_DB_NAME =os.getenv('APP_SOURCE_DB_NAME')

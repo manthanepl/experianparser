@@ -3,3 +3,5 @@
 /bureau_reports_json
 *.json
 **/__pycache__/ 
+**/temp/
+
