@@ -62,6 +62,11 @@ def bureauPersonDetails(bureau_data):
         usl_gl_in_last_12months = checkULorGL_last12m(CAIS_Account_DETAILS)
         bureau_vintage_in_months = bureauVintageMonths(CAIS_Account_DETAILS)
         bureau_calculation_datetime = current_date
+        max_dpd_in6months = None
+        other_dpds_in_last_2years =None
+        gl_cc_kcc_el_dpd_in_last_year  = None 
+        max_dpd_in_one_year = None
+
         # print(application_id)
         # print(full_name)
         # print(pan)
@@ -104,7 +109,11 @@ def bureauPersonDetails(bureau_data):
         "usl_gl_in_last_12months":usl_gl_in_last_12months, 
         "bureau_vintage_in_months":bureau_vintage_in_months, 
         "bureau_calculation_datetime":bureau_calculation_datetime,
-        "bureau_source":bureau_source
+        "bureau_source":bureau_source,
+        "max_dpd_in6months" : max_dpd_in6months,
+        "other_dpds_in_last_2years" :other_dpds_in_last_2years,
+        "gl_cc_kcc_el_dpd_in_last_year"  :gl_cc_kcc_el_dpd_in_last_year, 
+        "max_dpd_in_one_year" : max_dpd_in_one_year
     }
 
     return person_details

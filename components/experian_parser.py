@@ -27,7 +27,7 @@ dest_config = {
 }
 
 
-def experian_parser(bureau_data):
+def experian_parser(bureau_data,dest_config):
     conn = psycopg2.connect(**dest_config)
     cursor = conn.cursor()
 
@@ -53,7 +53,7 @@ def experian_parser(bureau_data):
 
     ########### enquiry details
     enquiry_details = enquiryDetails(bureau_data,account_holder_id,person_details)
-    print(enquiry_details)
+    # print(enquiry_details)
 
     # if enquiry details returns None then dont execute the sql query.
     sql_query = f"""
@@ -73,10 +73,7 @@ def experian_parser(bureau_data):
     ##### tradeline details #######
 
     # bureau person details pk as account holder id in account details
-    accountDetails(bureau_data,account_holder_id)
-
-    #cais_account_details(cais_account_details)
-
+    accountDetails(bureau_data,account_holder_id,conn,cursor)
 
 
 

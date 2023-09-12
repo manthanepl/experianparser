@@ -1,5 +1,6 @@
 from datetime import datetime
 import datetime as dt
+import numpy as np
 from mapping.accountHolderMapping import map_account_holder_type
 from mapping.collateral_mapping import map_collateral_type
 from mapping.creditFacilityMapping import map_credit_facility_status
@@ -46,13 +47,7 @@ def paymentEndDate(CAIS_Account_History):
 
 
 
-
-
-
-
-
-
-def accountDetails(bureau_data,account_holder_id):
+def accountDetails(bureau_data,account_holder_id,conn,cursor):
     
     if 'INProfileResponse' in bureau_data:
         CAIS_Account_DETAILS = bureau_data['INProfileResponse']['CAIS_Account']['CAIS_Account_DETAILS']
@@ -66,7 +61,7 @@ def accountDetails(bureau_data,account_holder_id):
                 cash_credit = False  # default value
                 overdraft = True if int(account.get("Account_Type","")) in [38,39,227,226] else False
                 hl_lap = True if int(account.get("Account_Type","")) in [2,42,168,58,226] else False
-                active = isActive(account['Account_Status']) if account.get("Account_Type","") != '' else False
+                active = False if account.get("Date_Closed","") != '' else True
                 date_opened = parse_date(account['Open_Date']) 
                 start_payment_date = parse_date(account['DateOfAddition']) 
                 ownership_type = map_account_holder_type(account['AccountHoldertypeCode'])
@@ -108,54 +103,108 @@ def accountDetails(bureau_data,account_holder_id):
                     written_off=   True if account.get('Written_off_Settled_Status','') in ['02','06','08'] and account.get('Written_off_Settled_Status','') !='' else False
 
                 written_off_date = parse_date(account['WriteOffStatusDate'])
-                loan_vintage_in_months = month_diff(datetime.now(),date_opened)
+                loan_vintage_in_months = month_diff(date_opened,datetime.now())
                 vintage_calulation_date = datetime.now()
 
+                account_details = {
+                        "date_reported": date_reported,
+                        "loan_type": loan_type,
+                        "secured": secured,
+                        "cash_credit": cash_credit,
+                        "overdraft": overdraft,
+                        "hl_lap": hl_lap,
+                        "active": active,
+                        "date_opened": date_opened,
+                        "payment_start_date": start_payment_date,
+                        "ownership_type": ownership_type,
+                        "payment_tenure_in_months": payment_tenure_months,
+                        "last_payment_date": last_payment_date,
+                        "interest_rate": interest_rate,
+                        "member_short_name": member_shortname,
+                        "emi_amount": emi_amount,
+                        "account_holder_id": account_holder_id,
+                        "collateral_type": collateral_type,
+                        "payment_frequency": payment_frequency,
+                        "payment_end_date": payment_end_date,
+                        "high_credit_amount": high_credit_amount,
+                        "actual_payment_amount": actual_payment_amount,
+                        "payment_history": payment_history,
+                        "remaining_balance": remaining_balance,
+                        "date_closed": date_closed,
+                        "index": index,
+                        "collateral_value": collateral_value,
+                        "credit_card_credit_limit": credit_card_credit_limit,
+                        "credit_card_cash_limit": credit_card_cash_limit,
+                        "account_number": account_number,
+                        "amount_overdue": amount_overdue,
+                        "credit_facility_status": credit_facility_status,
+                        "wo_amount_total": wo_amount_total,
+                        "wo_amount_principal": wo_amount_principal,
+                        "suit_filed": suit_filed,
+                        "settlement_amount": settlement_amount,
+                        "source_name": source_name,
+                        "source_table_id": source_table_id,
+                        "written_off": written_off,
+                        "written_off_date": written_off_date,
+                        "loan_vintage_in_months": loan_vintage_in_months,
+                        "vintage_calculation_date": vintage_calulation_date
+                      }
+                 
+                # Build the SQL query dynamically
+                columns = '"'+'", "'.join(account_details.keys()) + '"  '        #"account_holder_id"'   # Double Quotes on every Column Names
+                placeholders = ", ".join(["%s"] * (len(account_details)))
+                values = [account_details.get(key) for key in account_details] 
+                query = f"INSERT INTO veritas.cais_account_details ({columns}) VALUES ({placeholders}) RETURNING id"
 
+                # Execute the SQL query with the values
+                cursor.execute(query, values)
 
-                # Print all the variables
-                print(f"date_reported: {date_reported}")
-                print(f"loan_type: {loan_type}")
-                print(f"secured: {secured}")
-                print(f"cash_credit: {cash_credit}")
-                print(f"overdraft: {overdraft}")
-                print(f"hl_lap: {hl_lap}")
-                print(f"active: {active}")
-                print(f"date_opened: {date_opened}")
-                print(f"start_payment_date: {start_payment_date}")
-                print(f"ownership_type: {ownership_type}")
-                print(f"payment_tenure_months: {payment_tenure_months}")
-                print(f"last_payment_date: {last_payment_date}")
-                print(f"interest_rate: {interest_rate}")
-                print(f"member_shortname: {member_shortname}")
-                print(f"emi_amount: {emi_amount}")
-                print(f"account_holder_id: {account_holder_id}")
-                print(f"collateral_type: {collateral_type}")
-                print(f"payment_frequency: {payment_frequency}")
-                print(f"payment_end_date: {payment_end_date}")
-                print(f"high_credit_amount: {high_credit_amount}")
-                print(f"actual_payment_amount: {actual_payment_amount}")
-                print(f"payment_history: {payment_history}")
-                print(f"remaining_balance: {remaining_balance}")
-                print(f"date_closed: {date_closed}")
-                print(f"index: {index}")
-                print(f"collateral_value: {collateral_value}")
-                print(f"credit_card_credit_limit: {credit_card_credit_limit}")
-                print(f"credit_card_cash_limit: {credit_card_cash_limit}")
-                print(f"account_number: {account_number}")
-                print(f"amount_overdue: {amount_overdue}")
-                print(f"credit_facility_status: {credit_facility_status}")
-                print(f"wo_amount_total: {wo_amount_total}")
-                print(f"wo_amount_principal: {wo_amount_principal}")
-                print(f"suit_filed: {suit_filed}")
-                print(f"settlement_amount: {settlement_amount}")
-                print(f"source_name: {source_name}")
-                print(f"source_table_id: {source_table_id}")
-                print(f"written_off: {written_off}")
-                print(f"written_off_date: {written_off_date}")
-                print(f"loan_vintage_in_months: {loan_vintage_in_months}")
-                print(f"vintage_calulation_date: {vintage_calulation_date}")
+                # Commit the changes to the database
+                conn.commit()
 
+                # # Print all the variables
+                # print(f"date_reported: {date_reported}")
+                # print(f"loan_type: {loan_type}")
+                # print(f"secured: {secured}")
+                # print(f"cash_credit: {cash_credit}")
+                # print(f"overdraft: {overdraft}")
+                # print(f"hl_lap: {hl_lap}")
+                # print(f"active: {active}")
+                # print(f"date_opened: {date_opened}")
+                # print(f"start_payment_date: {start_payment_date}")
+                # print(f"ownership_type: {ownership_type}")
+                # print(f"payment_tenure_months: {payment_tenure_months}")
+                # print(f"last_payment_date: {last_payment_date}")
+                # print(f"interest_rate: {interest_rate}")
+                # print(f"member_shortname: {member_shortname}")
+                # print(f"emi_amount: {emi_amount}")
+                # print(f"account_holder_id: {account_holder_id}")
+                # print(f"collateral_type: {collateral_type}")
+                # print(f"payment_frequency: {payment_frequency}")
+                # print(f"payment_end_date: {payment_end_date}")
+                # print(f"high_credit_amount: {high_credit_amount}")
+                # print(f"actual_payment_amount: {actual_payment_amount}")
+                # print(f"payment_history: {payment_history}")
+                # print(f"remaining_balance: {remaining_balance}")
+                # print(f"date_closed: {date_closed}")
+                # print(f"index: {index}")
+                # print(f"collateral_value: {collateral_value}")
+                # print(f"credit_card_credit_limit: {credit_card_credit_limit}")
+                # print(f"credit_card_cash_limit: {credit_card_cash_limit}")
+                # print(f"account_number: {account_number}")
+                # print(f"amount_overdue: {amount_overdue}")
+                # print(f"credit_facility_status: {credit_facility_status}")
+                # print(f"wo_amount_total: {wo_amount_total}")
+                # print(f"wo_amount_principal: {wo_amount_principal}")
+                # print(f"suit_filed: {suit_filed}")
+                # print(f"settlement_amount: {settlement_amount}")
+                # print(f"source_name: {source_name}")
+                # print(f"source_table_id: {source_table_id}")
+                # print(f"written_off: {written_off}")
+                # print(f"written_off_date: {written_off_date}")
+                # print(f"loan_vintage_in_months: {loan_vintage_in_months}")
+                # print(f"vintage_calulation_date: {vintage_calulation_date}")
+            
                 
             # if it is a single tradeline
         elif isinstance(CAIS_Account_DETAILS,dict):
@@ -166,7 +215,7 @@ def accountDetails(bureau_data,account_holder_id):
                 cash_credit = False  # default value
                 overdraft = True if int(account.get("Account_Type","")) in [38,39,227,226] else False
                 hl_lap = True if int(account.get("Account_Type","")) in [2,42,168,58,226] else False
-                active = isActive(account['Account_Status']) if account.get("Account_Type","") != '' else False
+                active = False if account.get("Date_Closed","") != '' else True
                 date_opened = parse_date(account['Open_Date']) 
                 start_payment_date = parse_date(account['DateOfAddition']) 
                 ownership_type = map_account_holder_type(account['AccountHoldertypeCode'])
@@ -208,8 +257,62 @@ def accountDetails(bureau_data,account_holder_id):
                     written_off=   True if account.get('Written_off_Settled_Status','') in ['02','06','08'] and account.get('Written_off_Settled_Status','') !='' else False
 
                 written_off_date = parse_date(account['WriteOffStatusDate'])
-                loan_vintage_in_months = month_diff(datetime.now(),date_opened)
+                loan_vintage_in_months = month_diff(date_opened,datetime.now())
                 vintage_calulation_date = datetime.now()
 
+                account_details = {
+                        "date_reported": date_reported,
+                        "loan_type": loan_type,
+                        "secured": secured,
+                        "cash_credit": cash_credit,
+                        "overdraft": overdraft,
+                        "hl_lap": hl_lap,
+                        "active": active,
+                        "date_opened": date_opened,
+                        "payment_start_date": start_payment_date,
+                        "ownership_type": ownership_type,
+                        "payment_tenure_in_months": payment_tenure_months,
+                        "last_payment_date": last_payment_date,
+                        "interest_rate": interest_rate,
+                        "member_short_name": member_shortname,
+                        "emi_amount": emi_amount,
+                        "account_holder_id": account_holder_id,
+                        "collateral_type": collateral_type,
+                        "payment_frequency": payment_frequency,
+                        "payment_end_date": payment_end_date,
+                        "high_credit_amount": high_credit_amount,
+                        "actual_payment_amount": actual_payment_amount,
+                        "payment_history": payment_history,
+                        "remaining_balance": remaining_balance,
+                        "date_closed": date_closed,
+                        "index": index,
+                        "collateral_value": collateral_value,
+                        "credit_card_credit_limit": credit_card_credit_limit,
+                        "credit_card_cash_limit": credit_card_cash_limit,
+                        "account_number": account_number,
+                        "amount_overdue": amount_overdue,
+                        "credit_facility_status": credit_facility_status,
+                        "wo_amount_total": wo_amount_total,
+                        "wo_amount_principal": wo_amount_principal,
+                        "suit_filed": suit_filed,
+                        "settlement_amount": settlement_amount,
+                        "source_name": source_name,
+                        "source_table_id": source_table_id,
+                        "written_off": written_off,
+                        "written_off_date": written_off_date,
+                        "loan_vintage_in_months": loan_vintage_in_months,
+                        "vintage_calculation_date": vintage_calulation_date
+                      }  
 
-    
+
+
+                columns = '"'+'", "'.join(account_details.keys()) + '"  '        #"account_holder_id"'   # Double Quotes on every Column Names
+                placeholders = ", ".join(["%s"] * (len(account_details)))
+                values = [account_details.get(key) for key in account_details] 
+                query = f"INSERT INTO veritas.cais_account_details ({columns}) VALUES ({placeholders}) RETURNING id"
+
+                # Execute the SQL query with the values
+                cursor.execute(query, values)
+
+                # Commit the changes to the database
+                conn.commit()

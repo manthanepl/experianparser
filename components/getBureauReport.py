@@ -7,6 +7,24 @@ from components.experian_parser import experian_parser
 # Load environment variables from .env file
 load_dotenv()
 
+load_dotenv()
+
+# Destination DB Config
+dest_host = os.getenv('DEST_HOST')
+dest_name = os.getenv('DEST_DATABASE')
+dest_user = os.getenv('DEST_USER')
+dest_port = os.getenv('DEST_PORT')
+dest_password = os.getenv('DEST_PASSWORD')
+
+dest_config = {
+    "host": dest_host,
+    "database": dest_name,
+    "user": dest_user,
+    "password": dest_password,
+    "port": dest_port
+}
+
+
 
 
 def getBureauReport(data_list , bureau_source_name ,limit , folder_path,):
@@ -43,7 +61,7 @@ def getBureauReport(data_list , bureau_source_name ,limit , folder_path,):
                 response_json['added_data'] = {"application_id": app_id, "bureau_source": bureau_source_name, "row_id": row_id}
                 
                 # For parsing and uploading data to DB
-                experian_parser(response_json)
+                experian_parser(response_json,dest_config=dest_config)
 
                 # For making files of JSON Response
 
