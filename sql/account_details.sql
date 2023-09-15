@@ -4,6 +4,9 @@
 
 CREATE SEQUENCE veritas.cais_account_details_id_seq START 1;
 
+
+
+
 CREATE TABLE IF NOT EXISTS veritas.cais_account_details
 (
     id integer NOT NULL DEFAULT nextval('veritas.cais_account_details_id_seq'::regclass),

@@ -16,7 +16,7 @@ def checkFor_HL_LAP_active(CAIS_Account_DETAILS):
         no_of_hl_lap_running = sum(
             1
             for account in CAIS_Account_DETAILS
-            if account["Account_Type"] != '' and int(account["Account_Type"])  in [2, 42, 3] and closed_account(account["Date_Closed"]) ==0)
+            if account["Account_Type"] != '' and int(account["Account_Type"])  in [2, 42, 3,58,168,195] and closed_account(account["Date_Closed"]) ==0)
 
         # no written off  loan  accounts
         if no_of_hl_lap_running == 0:
@@ -30,7 +30,7 @@ def checkFor_HL_LAP_active(CAIS_Account_DETAILS):
     # if it is a single tradeline
     # elif isinstance(CAIS_Account_DETAILS, dict):
     else:
-        if CAIS_Account_DETAILS["Account_Type"] != '' and int(CAIS_Account_DETAILS["Account_Type"])  in [2, 42, 3] and closed_account(CAIS_Account_DETAILS["Date_Closed"]) ==0:
+        if CAIS_Account_DETAILS["Account_Type"] != '' and int(CAIS_Account_DETAILS["Account_Type"])  in [2, 42, 3,58,168,195] and closed_account(CAIS_Account_DETAILS["Date_Closed"]) ==0:
             return True
         else:
             return False

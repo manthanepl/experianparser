@@ -1,14 +1,19 @@
 from datetime import datetime
-
+import pytz
 from mapping.gender import gender_mapping
 from utils.anyHL_LAP_active import checkFor_HL_LAP_active
 from utils.anyUL_GL_last12m import checkULorGL_last12m
 from utils.anyWrittenOffLast24m import checkWriteOffStatus
 from utils.bureauVintageMonths import bureauVintageMonths
 from utils.enquiries_last6m import count_enquiries_in_last_six_months
+from utils.gl_cc_kcc_el_dpd_in_last1yr import GL_CC_KCC_EL_dpd_last1yr
+from utils.maxDPDlast1yr import maxDpdLast1yr
+from utils.maxDPDlast6m import  maxDpdLast6m
+from utils.othersDpdLast2y import othersDpdLast2y
 from utils.unsecured_enq_last6m import count_unsec_enq_last6m
 from utils.unsecured_loan_before import checkUnsecuredLoans
 from utils.writtenOff_accountHolder import totalWrittenOffAmount
+
 
 
 def bureauPersonDetails(bureau_data):
@@ -26,6 +31,7 @@ def bureauPersonDetails(bureau_data):
         full_name =  applicant_details['First_Name']+' '+applicant_details['Last_Name']
         dob= datetime.strptime(applicant_details['Date_Of_Birth_Applicant'], "%Y%m%d")
         current_date = datetime.now()
+        utc_time = datetime.now().astimezone(pytz.utc)
         age = current_date.year - dob.year - ((current_date.month, current_date.day) < (dob.month, dob.day))
         gender = gender_mapping(applicant_details['Gender_Code'])
         pan = applicant_details['IncomeTaxPan']
@@ -53,7 +59,9 @@ def bureauPersonDetails(bureau_data):
         any_unsecured_loan_before = checkUnsecuredLoans(CAIS_Account_DETAILS) # returns True if exists else false
         enquiries = bureau_data['INProfileResponse']['CAPS']
         enq_calculation_datetime = current_date
-        parsed_date = current_date
+        enq_calculation_datetime_utc =datetime.now().astimezone(pytz.utc)
+        parsed_date_ist = current_date
+        parsed_date_utc = datetime.now().astimezone(pytz.utc)
         enquiry_6months = count_enquiries_in_last_six_months(enquiries)  # returns count
         enquiry_6months_unsecured = count_unsec_enq_last6m(enquiries) # count
         any_written_off_in_last_24months = checkWriteOffStatus(CAIS_Account_DETAILS) # boolean
@@ -61,11 +69,12 @@ def bureauPersonDetails(bureau_data):
         any_hl_lap_running = checkFor_HL_LAP_active(CAIS_Account_DETAILS) 
         usl_gl_in_last_12months = checkULorGL_last12m(CAIS_Account_DETAILS)
         bureau_vintage_in_months = bureauVintageMonths(CAIS_Account_DETAILS)
-        bureau_calculation_datetime = current_date
-        max_dpd_in6months = None
-        other_dpds_in_last_2years =None
-        gl_cc_kcc_el_dpd_in_last_year  = None 
-        max_dpd_in_one_year = None
+        bureau_calculation_datetime_ist = current_date
+        bureau_calculation_datetime_utc = datetime.now().astimezone(pytz.utc)
+        max_dpd_in6months = maxDpdLast6m(CAIS_Account_DETAILS)
+        other_dpds_in_last_2years =othersDpdLast2y(CAIS_Account_DETAILS)
+        gl_cc_kcc_el_dpd_in_last_year  = GL_CC_KCC_EL_dpd_last1yr(CAIS_Account_DETAILS) 
+        max_dpd_in_one_year = maxDpdLast1yr(CAIS_Account_DETAILS)
 
         # print(application_id)
         # print(full_name)
@@ -94,9 +103,10 @@ def bureauPersonDetails(bureau_data):
         "drivers_id":drivers_id, 
         "uid":uid, 
         "enquiry_6months":enquiry_6months, 
-        "enq_calculation_datetime":enq_calculation_datetime, 
+        "enq_calculation_datetime_ist":enq_calculation_datetime, 
+        "enq_calculation_datetime_utc":enq_calculation_datetime_utc,
         "any_unsecured_loan_before":any_unsecured_loan_before, 
-        "created_datetime":created_datetime, 
+        # "created_datetime":created_datetime, 
         "passport_id":passport_id, 
         "ration_id":ration_id, 
         "application_id":application_id, 
@@ -104,13 +114,15 @@ def bureauPersonDetails(bureau_data):
         "any_written_off_in_last_24months":any_written_off_in_last_24months, 
         "written_off_principal_amount":written_off_principal_amount, 
         "written_off_total_amount": written_off_total_amount, 
-        "parsed_date":parsed_date, 
+        "parsed_date_ist":parsed_date_ist,
+        "parsed_date_utc":parsed_date_utc,
         "any_hl_lap_running":any_hl_lap_running, 
         "usl_gl_in_last_12months":usl_gl_in_last_12months, 
         "bureau_vintage_in_months":bureau_vintage_in_months, 
-        "bureau_calculation_datetime":bureau_calculation_datetime,
+        "bureau_calculation_datetime_ist":bureau_calculation_datetime_ist,
+        "bureau_calculation_datetime_utc":bureau_calculation_datetime_utc,
         "bureau_source":bureau_source,
-        "max_dpd_in6months" : max_dpd_in6months,
+        "max_dpd_in_6months" : max_dpd_in6months,
         "other_dpds_in_last_2years" :other_dpds_in_last_2years,
         "gl_cc_kcc_el_dpd_in_last_year"  :gl_cc_kcc_el_dpd_in_last_year, 
         "max_dpd_in_one_year" : max_dpd_in_one_year

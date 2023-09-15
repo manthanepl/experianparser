@@ -1,10 +1,10 @@
 from datetime import datetime
 import datetime as dt
-import numpy as np
+import pytz
+from components.loan_emi_details import loan_details
 from mapping.accountHolderMapping import map_account_holder_type
 from mapping.collateral_mapping import map_collateral_type
 from mapping.creditFacilityMapping import map_credit_facility_status
-
 from mapping.loanTypeMapping import loanTypeMapping
 from mapping.paymentFrequencyMapping import map_paymentFrequency
 from mapping.securedTypeMapping import isSecured
@@ -105,6 +105,8 @@ def accountDetails(bureau_data,account_holder_id,conn,cursor):
                 written_off_date = parse_date(account['WriteOffStatusDate'])
                 loan_vintage_in_months = month_diff(date_opened,datetime.now())
                 vintage_calulation_date = datetime.now()
+                utc_time = datetime.now().astimezone(pytz.utc)
+
 
                 account_details = {
                         "date_reported": date_reported,
@@ -147,7 +149,8 @@ def accountDetails(bureau_data,account_holder_id,conn,cursor):
                         "written_off": written_off,
                         "written_off_date": written_off_date,
                         "loan_vintage_in_months": loan_vintage_in_months,
-                        "vintage_calculation_date": vintage_calulation_date
+                        "vintage_calculation_date": vintage_calulation_date,
+                        #  "vintage_calculation_date_utc": utc_time
                       }
                  
                 # Build the SQL query dynamically
@@ -161,6 +164,11 @@ def accountDetails(bureau_data,account_holder_id,conn,cursor):
 
                 # Commit the changes to the database
                 conn.commit()
+
+                loan_id = cursor.fetchone()[0]
+                loan_details(account_holder_id,loan_id,account['CAIS_Account_History'],conn,cursor)
+
+                #
 
                 # # Print all the variables
                 # print(f"date_reported: {date_reported}")
@@ -204,7 +212,7 @@ def accountDetails(bureau_data,account_holder_id,conn,cursor):
                 # print(f"written_off_date: {written_off_date}")
                 # print(f"loan_vintage_in_months: {loan_vintage_in_months}")
                 # print(f"vintage_calulation_date: {vintage_calulation_date}")
-            
+
                 
             # if it is a single tradeline
         elif isinstance(CAIS_Account_DETAILS,dict):
@@ -259,6 +267,8 @@ def accountDetails(bureau_data,account_holder_id,conn,cursor):
                 written_off_date = parse_date(account['WriteOffStatusDate'])
                 loan_vintage_in_months = month_diff(date_opened,datetime.now())
                 vintage_calulation_date = datetime.now()
+                utc_time = datetime.now().astimezone(pytz.utc)
+
 
                 account_details = {
                         "date_reported": date_reported,
@@ -301,7 +311,8 @@ def accountDetails(bureau_data,account_holder_id,conn,cursor):
                         "written_off": written_off,
                         "written_off_date": written_off_date,
                         "loan_vintage_in_months": loan_vintage_in_months,
-                        "vintage_calculation_date": vintage_calulation_date
+                        "vintage_calculation_date": vintage_calulation_date,
+                        # "vintage_calculation_date_utc": utc_time
                       }  
 
 

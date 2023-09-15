@@ -16,19 +16,19 @@ def checkULorGL_last12m(CAIS_Account_DETAILS):
         no_of_ul_gl = sum(
             1
             for account in CAIS_Account_DETAILS
-            if account["Account_Type"] != '' and (int(account["Account_Type"])==7 or  SecuredOrUnsecuredLoan(account.get('Account_Type')) == 'Unsecured') and datetime.strptime(account.get("Date_Reported", ""), "%Y%m%d") > twelve_months_ago
+            if account["Account_Type"] != '' and (int(account["Account_Type"]) in [7,191] or  SecuredOrUnsecuredLoan(account.get('Account_Type')) == 'Unsecured') and datetime.strptime(account.get("Date_Reported", ""), "%Y%m%d") > twelve_months_ago
         )
 
         # no written off  loan  accounts
         if no_of_ul_gl == 0:
-            return False
+            return 0
         elif no_of_ul_gl > 0:
-            return True
+            return 1
 
     # if it is a single tradeline
     # elif isinstance(CAIS_Account_DETAILS, dict):
     else:
-        if CAIS_Account_DETAILS["Account_Type"] != '' and (int(CAIS_Account_DETAILS["Account_Type"]) == 7 or  SecuredOrUnsecuredLoan(CAIS_Account_DETAILS.get('Account_Type')) == 'Unsecured') and datetime.strptime(CAIS_Account_DETAILS.get("Date_Reported", ""), "%Y%m%d") > twelve_months_ago:
-            return True
+        if CAIS_Account_DETAILS["Account_Type"] != '' and (int(CAIS_Account_DETAILS["Account_Type"]) in [7,191] or  SecuredOrUnsecuredLoan(CAIS_Account_DETAILS.get('Account_Type')) == 'Unsecured') and datetime.strptime(CAIS_Account_DETAILS.get("Date_Reported", ""), "%Y%m%d") > twelve_months_ago:
+            return 1
         else:
-            return False
+            return 0

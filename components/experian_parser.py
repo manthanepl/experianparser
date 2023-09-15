@@ -47,7 +47,7 @@ def experian_parser(bureau_data,dest_config):
     
     account_holder_id = cursor.fetchone()[0]
     # Commit the changes to the database
-    conn.commit()
+    # conn.commit()
     print(person_details['application_id'])
 
 
@@ -70,13 +70,10 @@ def experian_parser(bureau_data,dest_config):
     # Commit the changes to the database
     conn.commit()
 
-    ##### tradeline details #######
+    #### tradeline details #######
 
     # bureau person details pk as account holder id in account details
     accountDetails(bureau_data,account_holder_id,conn,cursor)
-
-
-
 
 
     # Close the cursor and the database connection

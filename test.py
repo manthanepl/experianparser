@@ -26,6 +26,20 @@ if __name__ == "__main__":
 
     app_id_list = args.app_number.split(',')
 
+    if not args.bureau_source_name:
+        while True:
+            bureau_input = get_input("Enter Bureau Source Name ('EX' or 'TU'): ")
+            if bureau_input is not None:
+                bureau_input = bureau_input.lower()
+                if bureau_input in bureau_choices:
+                    args.bureau_source_name = bureau_input
+                    break
+                else:
+                    print("Invalid input. Please enter 'ex' or 'tu'.")
+            else:
+                print("Invalid input. Please enter 'ex' or 'tu'.")
+
+
     args.bureau_source_name.lower()
     if args.bureau_source_name == "ex":
         args.bureau_source_name = "experian"
